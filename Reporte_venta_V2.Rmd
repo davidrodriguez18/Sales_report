@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(XML)
+library(openxlsx)
+```
+
+-----------------------------
+# Manipulación de base de gestiones
+-----------------------------
+
+
+Importe de bases de datos para la creación de la base de gestiones
+```{r}
+#Importe gestiones
+gestiones <- read_excel("X:/Z_PERSONALES/DAVID/Ventas/Informe_ventas_V4_SF_Febrero.xlsx",  sheet = "Gestiones_est")
+
+#Importe gestiones nuevas
+gest_completas <- read_excel("C:/Users/Soporte/Downloads/Teseo_Pqrs_Areas_20240207_082758.xlsx")
+```
+Filtros
+```{r}
+#FILTRO PARA SELECCIONAR LAS OBSERVACIONES QUE SE NECESITAN DE LA NUEVA BASE
+gest_completas <- gest_completas %>%
+  filter(`Usuario Radica` %in% c("JHON FORERO","DIANA LOMBANA","LIZETH BELTRAN","CAROLINA CIFUENTES","LAURA APONTE","LAURA RODRIGUEZ","LINA CONTRERAS"))
+
+#FILTRO PARA SELECCIONAR LAS NUEVAS CITAS PROGRAMADAS
+nuevas_citas<- gest_completas %>% 
+  filter(Motivo=="CITA PROGRAMADA")
+
+```
+
+Seleccion de variables
+```{r}
+#Variables de las nuevas gestiones
+gest_completas <- gest_completas %>% 
+  select(`Nro Radicado`,Area,`Tipo documento`,Identificación,Nombre,Celular,`Tipo Paciente`,`Nro Obligación`,Email,Clinica...10,`Canal Ingreso`,`Tipificación General`,Motivo,Submotivo,Solicitud,Estado,Plazo,`Fecha Radicado`,`Fecha Vencimiento`,`Dia Transcurrido`,`Horas Transcurridas`,`Respuesta Gestión`,`Fecha de Cierre`,`Usuario Radica`,`Usuario Finaliza`,Clinica...40,`Documento Paciente`,`Fecha`,`Hora`,`Nombre Paciente`)
+
+```
+
+cambiar nombre de variables en gestiones
+```{r}
+colnames(gestiones)<- c("Nro Radicado","Area","Tipo documento", "Identificación", "Nombre", "Celular", "Tipo Paciente","Nro Obligación","Email","Clinica...10","Canal Ingreso","Tipificación General","Motivo","Submotivo","Solicitud","Estado","Plazo","Fecha Radicado","Fecha Vencimiento","Dia Transcurrido","Horas Transcurridas","Respuesta Gestión","Fecha de Cierre","Usuario Radica","Usuario Finaliza","Clinica...40","Documento Paciente","Fecha Cita","Hora Cita","Nombre Paciente","Seleccion Clinica","USUARIO_RADICA_ESTANDAR")
+```
+
+Creación de función para poder convertir variables en tipo "character" de manera masiva
+```{r}
+try_convert <- function(x, classname) {
+  tmp <- x
+  tryCatch({
+    suppressWarnings(class(tmp) <- classname)
+    tmp
+  }
+  )
+}
+```
+
+Conversión de variables
+```{r}
+#Creación de vectores que no deben ser convertidos en caracter
+variables_fecha <- c("Fecha Radicado", "Fecha Vencimiento", "Fecha de Cierre")
+variables_numericas <- c("Identificación","Celular","Nro Radicado","Plazo","Dia Transcurrido","Horas Transcurridas", "Documento Paciente")
+
+#Selección de variables tipo caract
+variables_caract <- gest_completas[ , !names(gest_completas) %in% c(variables_fecha,variables_numericas)]
+
+#Conversión de variables tipo caracter
+gest_completas_adj <- setNames(data.frame(lapply(variables_caract, try_convert, "character")), colnames(variables_caract))
+
+#Unión de todos los vectores
+gest_completas_adj[variables_fecha] <- gest_completas[variables_fecha]
+gest_completas_adj[variables_numericas] <- gest_completas[variables_numericas]
+
+#Confirmación de procesos
+sum(sapply(gest_completas_adj, is.character))
+class(gest_completas_adj$`Fecha Radicado`)
+```
+Cambiar variables tipo fecha
+```{r}
+#Conversión de todas las variables tipo fecha
+gest_completas_adj[variables_fecha] <- lapply(gest_completas_adj[variables_fecha], convertToDate)
+
+#gest_completas_adj$`Fecha Vencimiento`<-convertToDate(gest_completas_adj$`Fecha Vencimiento`)
+```
+
+
+```{r}
+#Unión de las bases de datos de gestiones
+gestiones_consolidadas<-bind_rows(gestiones,gest_completas_adj)
+```
+```{r}
+#Asignación de nombres a la nueva base de datos
+colnames(gestiones_consolidadas)<- c("Nro Radicado","Area","Tipo documento", "Identificación", "Nombre", "Celular", "Tipo Paciente","Nro Obligación","Email","Clinica...10","Canal Ingreso","Tipificación General","Motivo","Submotivo","Solicitud","Estado","Plazo","Fecha Radicado","Fecha Vencimiento","Dia Transcurrido","Horas Transcurridas","Respuesta Gestión","Fecha de Cierre","Usuario Radica","Usuario Finaliza","Clinica...40","Documento Paciente","Fecha Cita","Hora Cita","Nombre Paciente","Seleccion Clinica","USUARIO_RADICA_ESTANDAR")
+```
+
+```{r}
+#Filtro para eliminar cualquier variable que se haya creado en los procesos
+gestiones_consolidadas<- gestiones_consolidadas[,names(gestiones)]
+```
+
+Creación de variable nueva
+```{r}
+#Creación de variable de usuario para filtar a los que ya no ahcen parte del equipo
+gestiones_consolidadas <- gestiones_consolidadas %>% 
+  mutate(USUARIO_RADICA_ESTANDAR = if_else(`Usuario Radica` %in% c("JAIRO ALBERTO SANCHEZ MALPICA", "LEIDY VANESSA NINO CABREJO", "DIEGO ALEJANDRO ORTIZ VILLAREAL","LAURA RODRIGUEZ ROMERO", "CRISTIAN FELIPE MARTINEZ MUNOZ","LINA STEFANNY CASTRO MURCIA"),"RETIRADOS U OTROS", `Usuario Radica`))
+```
+
+Exportación de la base de datos 
+```{r}
+write.xlsx(gestiones_consolidadas, 'data_gestiones.xlsx')
+write.xlsx(nuevas_citas, 'citas_nuevas.xlsx')
+```
