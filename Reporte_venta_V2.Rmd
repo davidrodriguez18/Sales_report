@@ -89,7 +89,6 @@ Cambiar variables tipo fecha
 #Conversión de todas las variables tipo fecha
 gest_completas_adj[variables_fecha] <- lapply(gest_completas_adj[variables_fecha], convertToDate)
 
-#gest_completas_adj$`Fecha Vencimiento`<-convertToDate(gest_completas_adj$`Fecha Vencimiento`)
 ```
 
 
@@ -97,6 +96,7 @@ gest_completas_adj[variables_fecha] <- lapply(gest_completas_adj[variables_fecha
 #Unión de las bases de datos de gestiones
 gestiones_consolidadas<-bind_rows(gestiones,gest_completas_adj)
 ```
+
 ```{r}
 #Asignación de nombres a la nueva base de datos
 colnames(gestiones_consolidadas)<- c("Nro Radicado","Area","Tipo documento", "Identificación", "Nombre", "Celular", "Tipo Paciente","Nro Obligación","Email","Clinica...10","Canal Ingreso","Tipificación General","Motivo","Submotivo","Solicitud","Estado","Plazo","Fecha Radicado","Fecha Vencimiento","Dia Transcurrido","Horas Transcurridas","Respuesta Gestión","Fecha de Cierre","Usuario Radica","Usuario Finaliza","Clinica...40","Documento Paciente","Fecha Cita","Hora Cita","Nombre Paciente","Seleccion Clinica","USUARIO_RADICA_ESTANDAR")
